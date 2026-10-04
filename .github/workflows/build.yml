@@ -2,6 +2,8 @@ name: Build APK
 on:
   push:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,18 +17,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
-      - name: Build debug APK
+      - name: Build release APK
         working-directory: BaroGuard
         run: |
           set +e
-          gradle assembleDebug --stacktrace --console=plain > build.log 2>&1
+          gradle assembleRelease -PversionCode=${{ github.run_number }} --stacktrace --console=plain > build.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
             msg=$( (grep -E '^e: ' build.log; grep -A10 'What went wrong' build.log) | head -25 | sed 's/%/%25/g' | awk '{printf "%s%%0A",$0}')
             echo "::error title=Gradle build failed::$msg"
           fi
           exit $code
-      - uses: actions/upload-artifact@v4
-        with:
-          name: BaroGuard-debug-apk
-          path: BaroGuard/app/build/outputs/apk/debug/*.apk
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp BaroGuard/app/build/outputs/apk/release/app-release.apk BaroGuard.apk
+          gh release create "v1.0.${{ github.run_number }}" BaroGuard.apk --repo "${{ github.repository }}" --title "BaroGuard 1.0.${{ github.run_number }}" --notes "Automated build" --latest
