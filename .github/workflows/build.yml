@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK and AAB
 on:
   push:
   workflow_dispatch:
@@ -16,12 +16,28 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.9
-      - name: Build release APK
+          gradle-version: 8.11.1
+      - name: Prepare signing key
+        env:
+          KS: ${{ secrets.KEYSTORE_BASE64 }}
+          KSP: ${{ secrets.KEYSTORE_PASSWORD }}
+          KA: ${{ secrets.KEY_ALIAS }}
+          KP: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$KSP" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=$KA" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$KP" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No KEYSTORE_BASE64 secret set - signing with the public fallback key"
+          fi
+      - name: Build signed APK and AAB
         working-directory: BaroGuard
         run: |
           set +e
-          gradle assembleRelease -PversionCode=${{ github.run_number }} --stacktrace --console=plain > build.log 2>&1
+          gradle assembleDirectRelease bundlePlayRelease -PversionCode=${{ github.run_number }} --stacktrace --console=plain > build.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
             msg=$( (grep -E '^e: ' build.log; grep -A10 'What went wrong' build.log) | head -25 | sed 's/%/%25/g' | awk '{printf "%s%%0A",$0}')
@@ -32,5 +48,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp BaroGuard/app/build/outputs/apk/release/app-release.apk BaroGuard.apk
-          gh release create "v1.0.${{ github.run_number }}" BaroGuard.apk --repo "${{ github.repository }}" --title "BaroGuard 1.0.${{ github.run_number }}" --notes "Automated build" --latest
+          cp BaroGuard/app/build/outputs/apk/direct/release/app-direct-release.apk BaroGuard.apk
+          cp BaroGuard/app/build/outputs/bundle/playRelease/app-play-release.aab BaroGuard.aab
+          gh release create "v1.0.${{ github.run_number }}" BaroGuard.apk BaroGuard.aab --repo "${{ github.repository }}" --title "BaroGuard 1.0.${{ github.run_number }}" --notes "Automated build: APK for direct install, AAB for Play Console" --latest
