@@ -50,4 +50,5 @@ jobs:
         run: |
           cp BaroGuard/app/build/outputs/apk/direct/release/app-direct-release.apk BaroGuard.apk
           cp BaroGuard/app/build/outputs/bundle/playRelease/app-play-release.aab BaroGuard.aab
-          gh release create "v1.0.${{ github.run_number }}" BaroGuard.apk BaroGuard.aab --repo "${{ github.repository }}" --title "BaroGuard 1.0.${{ github.run_number }}" --notes "Automated build: APK for direct install, AAB for Play Console" --latest
+          if [ -f BaroGuard/RELEASE_NOTES.md ]; then NOTES=BaroGuard/RELEASE_NOTES.md; else echo "Automated build" > notes.md; NOTES=notes.md; fi
+          gh release create "v1.0.${{ github.run_number }}" BaroGuard.apk BaroGuard.aab --repo "${{ github.repository }}" --title "BaroGuard 1.0.${{ github.run_number }}" --notes-file "$NOTES" --latest
