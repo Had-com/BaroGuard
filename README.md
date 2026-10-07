@@ -21,7 +21,7 @@ a "Barometer not available" screen.
 ## Features
 
 **Monitoring**
-- Background sampling every 5, 15, 30 or 60 minutes (WorkManager, low battery use).
+- Background sampling every 5, 15, 30 or 60 minutes by a small foreground service (shows an ongoing notification, can be turned off in Settings) with a WorkManager fallback.
 - Units: hPa, mbar, inHg, mmHg.
 - Readings are stored in a local Room database and removed after 30 days.
 
@@ -96,7 +96,8 @@ gradle bundlePlayRelease       # AAB for Google Play
 ```
 app/src/main/java/com/baroguard/
   MainActivity.kt   Compose UI: graph, marks, settings, update section
-  Monitoring.kt     sensor reading, scheduling, background worker, alert engine
+  Monitoring.kt     sensor reading, scheduling, fallback worker, alert engine
+  SamplerService.kt foreground service that samples while the app is closed
   BaroWidget.kt     home-screen widget and its chart renderer
   Db.kt             Room database: readings and marks
   Prefs.kt          settings storage
@@ -114,5 +115,6 @@ Kotlin, Jetpack Compose, Room, WorkManager, AppWidget. Min SDK 26, target SDK 36
 | Permission | Why |
 |---|---|
 | `POST_NOTIFICATIONS` | pressure alerts (Android 13+) |
-| `RECEIVE_BOOT_COMPLETED` | restart sampling after a reboot |
+| `RECEIVE_BOOT_COMPLETED` | restart sampling after a reboot or app update |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`, `WAKE_LOCK` | background monitoring service: Android only delivers barometer readings in the background while a notification is showing |
 | `INTERNET`, `REQUEST_INSTALL_PACKAGES` | update check and install (direct APK only, removed from the Play build) |
